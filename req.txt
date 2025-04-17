@@ -1,1 +1,3 @@
 flet
+bcrypt
+werkzeug
