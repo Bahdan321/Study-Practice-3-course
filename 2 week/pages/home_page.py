@@ -1,34 +1,42 @@
 import flet as ft
+from db import db_manager
 
 def HomeView(page: ft.Page):
-    """Creates the Home View (placeholder)."""
-
-    username = page.session.get("username") # Get username from session if needed
+    """
+    Вьюшка домашней страницы
+    """
 
     def logout_clicked(e):
-        """Handles logout."""
-        # Clear session data
+        """
+        Выход из аккаунта, удаление сессии и токена.
+        """
+        token = page.session.get("session_token")
+        print("Пользователь: ",token)
+        
+        if token:
+            db_manager.delete_session(token)
+            page.client_storage.remove("session_token")
+            print("Persistent session token removed from DB and local storage.")
+
         page.session.clear()
-        # Redirect to login page
         page.go("/login")
 
     return ft.View(
-        "/home", # Route for this view
+        "/home",
         [
             ft.AppBar(title=ft.Text("Домашняя страница"), actions=[
                 ft.IconButton(ft.icons.LOGOUT, tooltip="Выйти", on_click=logout_clicked)
             ]),
             ft.Column(
                 [
-                    ft.Text(f"Добро пожаловать, {username}!" if username else "Добро пожаловать!", size=24),
+                    ft.Text(f"Добро пожаловать, {page.session.get("username")}!" if page.session.get("username") else "Добро пожаловать!", size=24),
                     ft.Text("Это ваша домашняя страница финансового менеджера."),
-                    # Add more content here later
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
                 spacing=20
             )
         ],
-        vertical_alignment=ft.MainAxisAlignment.START, # Align content to the top
+        vertical_alignment=ft.MainAxisAlignment.START,
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
     )
