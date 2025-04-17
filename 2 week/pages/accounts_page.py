@@ -1,6 +1,7 @@
 import flet as ft
 from db import db_manager
 from icons import get_icon_by_name
+import functools # Import functools for partial
 
 def AccountsView(page: ft.Page):
     """
@@ -13,11 +14,15 @@ def AccountsView(page: ft.Page):
 
     accounts_list_view = ft.ListView(spacing=10, auto_scroll=True)
 
+    # --- Functions ---
+    def go_to_edit_account(account_id: int, e: ft.ControlEvent):
+        """Navigates to the edit page for the specific account."""
+        print(f"Navigating to edit account ID: {account_id}")
+        page.go(f"/accounts/edit/{account_id}") # Use f-string for dynamic route
+
     def load_accounts():
-        """
-        Загружает счета из базы данных и обновляет список.
-        """
-        print("Загрузка счетов для представления /accounts...")
+        """Fetches accounts from DB and updates the ListView."""
+        print("Loading accounts for /accounts view...")
         accounts_list_view.controls.clear()
         user_accounts = db_manager.get_accounts_by_user(user_id)
         if not user_accounts:
@@ -30,16 +35,32 @@ def AccountsView(page: ft.Page):
             )
         else:
             for acc in user_accounts:
+                edit_handler = functools.partial(go_to_edit_account, acc['account_id'])
                 accounts_list_view.controls.append(
                     ft.ListTile(
                         leading=ft.Icon(get_icon_by_name(acc["icon"])),
-                        title=ft.Text(acc["name"]),
+                        # Wrap the title Text in a Container with expand=True
+                        title=ft.Container(
+                            content=ft.Text(acc["name"]),
+                            expand=True # Allow the title to use available horizontal space
+                        ),
                         subtitle=ft.Text(
                             f"{acc['description'] if acc['description'] else ''}"
                         ),
-                        trailing=ft.Text(
-                            f"{acc['balance']:.2f} {acc['currency_symbol']}"
-                        ),
+                        trailing=ft.Row(
+                            [
+                                ft.Text(
+                                    f"{acc['balance']:.2f} {acc['currency_symbol']}"
+                                ),
+                                ft.IconButton(
+                                    icon=ft.icons.EDIT_OUTLINED,
+                                    tooltip="Редактировать",
+                                    on_click=edit_handler
+                                )
+                            ],
+                            spacing=10,
+                            alignment=ft.MainAxisAlignment.END
+                        )
                     )
                 )
         if page.controls:
@@ -48,8 +69,10 @@ def AccountsView(page: ft.Page):
     def go_to_add_account(e):
         page.go("/accounts/add")
 
+    # --- Initial Load ---
     load_accounts()
 
+    # --- View Layout ---
     return ft.View(
         "/accounts",
         [
@@ -66,9 +89,9 @@ def AccountsView(page: ft.Page):
             ft.Column(
                 [
                     ft.Container(
-                        content=accounts_list_view,
-                        expand=True,
-                        alignment=ft.alignment.center,
+                         content=accounts_list_view,
+                         expand=True,
+                         alignment=ft.alignment.center,
                     ),
                     ft.Container(
                         content=ft.ElevatedButton(

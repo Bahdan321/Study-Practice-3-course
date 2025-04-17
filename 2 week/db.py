@@ -259,5 +259,49 @@ class DatabaseManager:
             print(f"Ошибка при получении счетов для пользователя с ID {user_id}: {e}")
             return []
 
+    def get_account_by_id(self, account_id, user_id):
+        """Fetches a single account by its ID, ensuring it belongs to the user."""
+        try:
+            self.cursor.execute(
+                """
+                SELECT
+                    a.account_id, a.user_id, a.name, a.balance, a.currency_id,
+                    a.description, a.icon,
+                    c.code as currency_code, c.symbol as currency_symbol
+                FROM Accounts a
+                JOIN Currencies c ON a.currency_id = c.currency_id
+                WHERE a.account_id = ? AND a.user_id = ?
+                """,
+                (account_id, user_id)
+            )
+            return self.cursor.fetchone() # Returns a single sqlite3.Row or None
+        except sqlite3.Error as e:
+            print(f"Error fetching account {account_id} for user {user_id}: {e}")
+            return None
+
+    def update_account(self, account_id, user_id, name, balance, currency_id, description, icon):
+        """Updates an existing account for a user. Returns True on success, False on failure."""
+        try:
+            self.cursor.execute(
+                """
+                UPDATE Accounts
+                SET name = ?, balance = ?, currency_id = ?, description = ?, icon = ?
+                WHERE account_id = ? AND user_id = ?
+                """,
+                (name, balance, currency_id, description, icon, account_id, user_id)
+            )
+            self.conn.commit()
+            # Check if any row was actually updated
+            if self.cursor.rowcount > 0:
+                print(f"Account ID {account_id} updated successfully for user_id {user_id}.")
+                return True
+            else:
+                # This might happen if the account_id doesn't exist or doesn't belong to the user
+                print(f"Account ID {account_id} not found or does not belong to user_id {user_id}. No update performed.")
+                return False
+        except sqlite3.Error as e:
+            print(f"Error updating account ID {account_id} for user_id {user_id}: {e}")
+            self.conn.rollback()
+            return False
 
 db_manager = DatabaseManager()
