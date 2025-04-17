@@ -13,11 +13,13 @@ class DatabaseManager:
         self.conn = sqlite3.connect(db_name, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self.cursor = self.conn.cursor()
+        self.cursor.execute("PRAGMA foreign_keys = ON;")
         self._create_tables()
+        self._populate_default_currencies()
 
     def _create_tables(self):
         """
-        Создает таблицы в базе данных, если они не существуют
+        Создает таблицы в базе данных, если они отсутствуют
         """
         self.cursor.execute(
             """
@@ -30,7 +32,6 @@ class DatabaseManager:
             );
         """
         )
-
         self.cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS "Sessions" (
@@ -42,17 +43,64 @@ class DatabaseManager:
             );
             """
         )
-
         self.cursor.execute(
             """
             CREATE INDEX IF NOT EXISTS idx_session_token ON Sessions(token);
             """
         )
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS "Currencies" (
+                "currency_id" INTEGER PRIMARY KEY AUTOINCREMENT,
+                "code" TEXT NOT NULL UNIQUE,
+                "name" TEXT,
+                "symbol" TEXT
+            );
+            """
+        )
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS "Accounts" (
+                "account_id" INTEGER PRIMARY KEY AUTOINCREMENT,
+                "user_id" INTEGER NOT NULL,
+                "name" TEXT NOT NULL,
+                "balance" REAL NOT NULL DEFAULT 0,
+                "currency_id" INTEGER NOT NULL,
+                "description" TEXT,
+                "icon" TEXT,
+                FOREIGN KEY ("user_id") REFERENCES "Users"("user_id") ON DELETE CASCADE,
+                FOREIGN KEY ("currency_id") REFERENCES "Currencies"("currency_id") ON DELETE NO ACTION
+            );
+            """
+        )
         self.conn.commit()
+
+    def _populate_default_currencies(self):
+        """
+        Заполняет таблицу валют стандартными значениями, если она пуста
+        """
+        self.cursor.execute("SELECT COUNT(*) FROM Currencies")
+        count = self.cursor.fetchone()[0]
+        if count == 0:
+            default_currencies = [
+                ('USD', 'US Dollar', '$'),
+                ('EUR', 'Euro', '€'),
+                ('RUB', 'Russian Ruble', '₽')
+            ]
+            try:
+                self.cursor.executemany(
+                    "INSERT INTO Currencies (code, name, symbol) VALUES (?, ?, ?)",
+                    default_currencies
+                )
+                self.conn.commit()
+                print("Стандартные валюты добавлены.")
+            except sqlite3.Error as e:
+                print(f"Ошибка при добавлении стандартных валют: {e}")
+                self.conn.rollback()
 
     def add_user(self, username, email, password):
         """
-        Создает нового пользователя
+        Добавляет нового пользователя
         """
         password_hash = generate_password_hash(password)
         try:
@@ -63,12 +111,12 @@ class DatabaseManager:
             self.conn.commit()
             return True
         except sqlite3.IntegrityError:
-            print(f"Error: Username '{username}' or Email '{email}' already exists.")
+            print(f"Ошибка: Имя пользователя '{username}' или Email '{email}' уже существует.")
             return False
 
     def get_user_by_username_or_email(self, identifier):
         """
-        Получает пользователя по имени пользователя или почте
+        Возвращает данные пользователя по имени пользователя или email
         """
         self.cursor.execute(
             "SELECT * FROM Users WHERE username = ? OR email = ?",
@@ -79,17 +127,16 @@ class DatabaseManager:
 
     def verify_user(self, identifier, password):
         """
-        Верифицирует пользователя
+        Проверяет пользователя по имени пользователя или email и паролю
         """
         user = self.get_user_by_username_or_email(identifier)
         if user and check_password_hash(user["password_hash"], password):
             return user
         return None
 
-
     def create_session(self, user_id, duration_days=30):
         """
-        Создание сессии
+        Создает сессию для пользователя
         """
         token = secrets.token_hex(32)
         expires_at = datetime.datetime.now() + datetime.timedelta(days=duration_days)
@@ -101,12 +148,12 @@ class DatabaseManager:
             self.conn.commit()
             return token
         except sqlite3.Error as e:
-            print(f"Error creating session: {e}")
+            print(f"Ошибка при создании сессии: {e}")
             return None
 
     def get_user_by_session_token(self, token):
         """
-        Валидация пользователя по токену
+        Возвращает данные пользователя по токену сессии
         """
         now = datetime.datetime.now()
         self.cursor.execute(
@@ -132,10 +179,10 @@ class DatabaseManager:
         try:
             self.cursor.execute("DELETE FROM Sessions WHERE token = ?", (token,))
             self.conn.commit()
-            print(f"Session token {token[:8]}... deleted.")
+            print(f"Сессия с токеном {token[:8]}... удалена.")
             return True
         except sqlite3.Error as e:
-            print(f"Error deleting session token {token[:8]}...: {e}")
+            print(f"Ошибка при удалении сессии с токеном {token[:8]}...: {e}")
             return False
 
     def delete_all_user_sessions(self, user_id):
@@ -145,10 +192,10 @@ class DatabaseManager:
         try:
             self.cursor.execute("DELETE FROM Sessions WHERE user_id = ?", (user_id,))
             self.conn.commit()
-            print(f"All sessions for user_id {user_id} deleted.")
+            print(f"Все сессии для пользователя с ID {user_id} удалены.")
             return True
         except sqlite3.Error as e:
-            print(f"Error deleting sessions for user_id {user_id}: {e}")
+            print(f"Ошибка при удалении сессий для пользователя с ID {user_id}: {e}")
             return False
 
     def close_connection(self):
@@ -157,7 +204,60 @@ class DatabaseManager:
         """
         if self.conn:
             self.conn.close()
-            print("Database connection closed.")
+            print("Соединение с базой данных закрыто.")
+
+    def get_currencies(self):
+        """
+        Возвращает список всех доступных валют
+        """
+        try:
+            self.cursor.execute("SELECT currency_id, code, name, symbol FROM Currencies ORDER BY code")
+            return self.cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"Ошибка при получении списка валют: {e}")
+            return []
+
+    def add_account(self, user_id, name, balance, currency_id, description, icon):
+        """
+        Добавляет новый счет для пользователя
+        """
+        try:
+            self.cursor.execute(
+                """
+                INSERT INTO Accounts (user_id, name, balance, currency_id, description, icon)
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (user_id, name, balance, currency_id, description, icon)
+            )
+            self.conn.commit()
+            print(f"Счет '{name}' успешно добавлен для пользователя с ID {user_id}.")
+            return True
+        except sqlite3.Error as e:
+            print(f"Ошибка при добавлении счета '{name}' для пользователя с ID {user_id}: {e}")
+            self.conn.rollback()
+            return False
+
+    def get_accounts_by_user(self, user_id):
+        """
+        Возвращает список всех счетов пользователя
+        """
+        try:
+            self.cursor.execute(
+                """
+                SELECT
+                    a.account_id, a.name, a.balance, a.description, a.icon,
+                    c.code as currency_code, c.symbol as currency_symbol
+                FROM Accounts a
+                JOIN Currencies c ON a.currency_id = c.currency_id
+                WHERE a.user_id = ?
+                ORDER BY a.name
+                """,
+                (user_id,)
+            )
+            return self.cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"Ошибка при получении счетов для пользователя с ID {user_id}: {e}")
+            return []
 
 
 db_manager = DatabaseManager()

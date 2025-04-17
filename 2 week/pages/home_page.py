@@ -5,14 +5,13 @@ def HomeView(page: ft.Page):
     """
     Вьюшка домашней страницы
     """
+    username = page.session.get("username")
 
     def logout_clicked(e):
         """
         Выход из аккаунта, удаление сессии и токена.
         """
         token = page.session.get("session_token")
-        print("Пользователь: ",token)
-        
         if token:
             db_manager.delete_session(token)
             page.client_storage.remove("session_token")
@@ -20,6 +19,9 @@ def HomeView(page: ft.Page):
 
         page.session.clear()
         page.go("/login")
+
+    def go_to_accounts(e):
+        page.go("/accounts")
 
     return ft.View(
         "/home",
@@ -29,8 +31,13 @@ def HomeView(page: ft.Page):
             ]),
             ft.Column(
                 [
-                    ft.Text(f"Добро пожаловать, {page.session.get("username")}!" if page.session.get("username") else "Добро пожаловать!", size=24),
+                    ft.Text(f"Добро пожаловать, {username}!" if username else "Добро пожаловать!", size=24),
                     ft.Text("Это ваша домашняя страница финансового менеджера."),
+                    ft.ElevatedButton(
+                        "Управление счетами",
+                        icon=ft.icons.ACCOUNT_BALANCE_WALLET,
+                        on_click=go_to_accounts
+                    ),
                 ],
                 alignment=ft.MainAxisAlignment.CENTER,
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
