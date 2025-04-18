@@ -477,6 +477,53 @@ class DatabaseManager:
                 session.rollback()
                 return False, f"Database error: {e}"
 
+    def delete_account(self, account_id, user_id):
+        """
+        Deletes an account and all its associated transactions, verifying ownership.
+        Returns (True, "Success message") or (False, "Error message").
+        """
+        with self._get_session() as session:
+            try:
+                # 1. Verify the account exists and belongs to the user
+                account_to_delete = session.execute(
+                    select(Account).where(
+                        Account.account_id == account_id, Account.user_id == user_id
+                    )
+                ).scalar_one_or_none()
+
+                if not account_to_delete:
+                    return False, "Account not found or access denied."
+
+                # 2. Delete associated transactions (important to do first due to FK constraints)
+                stmt_delete_transactions = delete(Transaction).where(
+                    Transaction.account_id == account_id
+                )
+                result_trans = session.execute(stmt_delete_transactions)
+                print(f"Deleted {result_trans.rowcount} transactions for account ID {account_id}.")
+
+                # 3. Delete the account itself
+                session.delete(account_to_delete) # Use ORM delete
+
+                # Alternative: Use delete statement
+                # stmt_delete_account = delete(Account).where(
+                #     Account.account_id == account_id,
+                #     Account.user_id == user_id
+                # )
+                # result_acc = session.execute(stmt_delete_account)
+                # if result_acc.rowcount == 0:
+                #     # Should not happen if select worked, but good safety check
+                #     raise Exception("Account deletion failed unexpectedly after verification.")
+
+                # 4. Commit the changes
+                session.commit()
+                print(f"Account ID {account_id} deleted successfully for user_id {user_id}.")
+                return True, "Account and associated transactions deleted successfully."
+
+            except Exception as e:
+                session.rollback()
+                print(f"Error deleting account ID {account_id} for user_id {user_id}: {e}")
+                return False, f"Database error during deletion: {e}"
+
     # === Category Management ===
 
     def get_categories_by_user_and_type(self, user_id, category_type: TransactionType):

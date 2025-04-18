@@ -126,6 +126,39 @@ def EditAccountView(page: ft.Page, account_id: int):
         """Navigates back to the accounts list page without saving."""
         page.go("/accounts")
 
+    def close_dialog(e):
+        """Closes the currently open dialog."""
+        page.go("/accounts")
+
+    def execute_delete_account(e):
+        """Performs the actual deletion after confirmation."""
+        close_dialog(e) # Close the confirmation dialog
+        print(f"Attempting to delete account ID: {account_id}")
+        success, message = db_manager.delete_account(account_id, user_id)
+        if success:
+            print(f"Account {account_id} deleted successfully.")
+            page.go("/accounts") # Navigate back after successful deletion
+        else:
+            print(f"Error deleting account {account_id}: {message}")
+            edit_account_error_text.value = f"Ошибка удаления: {message}"
+            page.update()
+
+    def confirm_delete_account(e):
+        """Opens a confirmation dialog before deleting the account."""
+        confirm_dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text("Подтвердите удаление"),
+            content=ft.Text(f"Вы уверены, что хотите удалить счет '{account_data['name']}'?\nВсе связанные транзакции также будут удалены."),
+            actions=[
+                ft.TextButton("Отмена", on_click=close_dialog),
+                ft.TextButton("Удалить", on_click=execute_delete_account, style=ft.ButtonStyle(color=ft.colors.RED)),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+        page.open(confirm_dialog)
+        page.update()
+
+
     # --- View Layout ---
     return ft.View(
         # Route includes the specific account ID
@@ -145,10 +178,20 @@ def EditAccountView(page: ft.Page, account_id: int):
                     edit_account_error_text,
                     ft.Row(
                         [
+                            # Add Delete Button
+                            ft.ElevatedButton(
+                                "Удалить",
+                                on_click=confirm_delete_account,
+                                color=ft.colors.WHITE,
+                                bgcolor=ft.colors.RED_700, # Make delete button stand out
+                            ),
+                            # Existing Buttons
                             ft.ElevatedButton("Отмена", on_click=cancel_and_go_back),
                             ft.ElevatedButton("Сохранить", on_click=save_updated_account),
                         ],
-                        alignment=ft.MainAxisAlignment.SPACE_EVENLY
+                        alignment=ft.MainAxisAlignment.SPACE_EVENLY,
+                        # Adjust spacing or width if needed
+                        width=350 # Match width of fields for alignment
                     )
                 ],
                 alignment=ft.MainAxisAlignment.START,
