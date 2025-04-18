@@ -4,10 +4,12 @@ from pages.registration_page import RegistrationView
 from pages.home_page import HomeView
 from pages.accounts_page import AccountsView
 from pages.add_account_page import AddAccountView
-from pages.edit_account_page import EditAccountView # Import the new edit view
+from pages.edit_account_page import EditAccountView
+from pages.add_transaction_page import AddTransactionView
 from db import db_manager
 import time
-import re # Import regex for route parsing
+import re  # Import regex for route parsing
+
 
 def main(page: ft.Page):
     page.title = "Персональный финансовый менеджер"
@@ -25,8 +27,8 @@ def main(page: ft.Page):
             user = db_manager.get_user_by_session_token(stored_token)
             if user:
                 print(f"Token valid. Logging in user: {user['username']}")
-                page.session.set("user_id", user['user_id'])
-                page.session.set("username", user['username'])
+                page.session.set("user_id", user["user_id"])
+                page.session.set("username", user["username"])
                 page.session.set("session_token", stored_token)
                 return True
             else:
@@ -41,10 +43,16 @@ def main(page: ft.Page):
         "/register": RegistrationView,
         "/home": HomeView,
         "/accounts": AccountsView,
-        "/accounts/add": AddAccountView
+        "/accounts/add": AddAccountView,
+        "/add_transaction": AddTransactionView,
     }
     # Define protected routes
-    protected_routes = ["/home", "/accounts", "/accounts/add", "/accounts/edit/"] # Add base edit route
+    protected_routes = [
+        "/home",
+        "/accounts",
+        "/accounts/add",
+        "/accounts/edit/",
+    ]  # Add base edit route
 
     # --- Route Change Logic ---
     def route_change(route):
@@ -59,11 +67,13 @@ def main(page: ft.Page):
         # Check if user is logged in for protected routes
         is_protected = any(current_route.startswith(pr) for pr in protected_routes)
         if is_protected and not is_logged_in:
-            print(f"User not logged in (route_change check for {current_route}), redirecting to /login")
+            print(
+                f"User not logged in (route_change check for {current_route}), redirecting to /login"
+            )
             page.views.clear()
             page.views.append(simple_view_factories["/login"](page))
             page.update()
-            return # Stop further processing
+            return  # Stop further processing
 
         # --- Route Matching ---
         page.views.clear()
@@ -85,8 +95,9 @@ def main(page: ft.Page):
                 except (ValueError, IndexError):
                     print(f"Error parsing account ID from route: {current_route}")
                     # Handle error - maybe show a 'not found' view or redirect
-                    target_view = ft.View(current_route, [ft.Text("Invalid Account ID")])
-
+                    target_view = ft.View(
+                        current_route, [ft.Text("Invalid Account ID")]
+                    )
 
         # --- Append View or Handle Unknown Route ---
         if target_view:
@@ -99,7 +110,6 @@ def main(page: ft.Page):
             # Consider page.go(default_route) if you want a full redirect feel
 
         page.update()
-
 
     # --- View Pop Logic ---
     def view_pop(view):
@@ -117,7 +127,6 @@ def main(page: ft.Page):
             # This handles navigating back from edit/add pages correctly
             page.go(top_view.route)
 
-
     page.on_route_change = route_change
     page.on_view_pop = view_pop
 
@@ -129,4 +138,6 @@ def main(page: ft.Page):
 
 
 if __name__ == "__main__":
-    ft.app(target=main)
+    ft.app(
+        target=main,
+    )
