@@ -815,6 +815,46 @@ class DatabaseManager:
                 )
                 session.rollback()
                 return [], 0.0
+    def add_category(self, user_id: int, name: str, type: TransactionType, icon: str | None = None):
+        """Adds a new custom category for a specific user."""
+        if not isinstance(type, TransactionType):
+            try:
+                type = TransactionType(type) # Convert if string
+            except ValueError:
+                return None, "Invalid category type."
+
+        new_category = Category(
+            user_id=user_id,
+            name=name.strip(), # Remove leading/trailing whitespace
+            type=type,
+            icon=icon
+        )
+
+        with self._get_session() as session:
+            try:
+                session.add(new_category)
+                session.commit()
+                session.refresh(new_category) # To get the generated category_id
+                print(f"Custom category '{name}' added for user_id {user_id}.")
+                # Return the created category object (or its dict representation) and no error
+                return {
+                    "category_id": new_category.category_id,
+                    "user_id": new_category.user_id,
+                    "name": new_category.name,
+                    "type": new_category.type.value,
+                    "icon": new_category.icon,
+                }, None
+            except Exception as e: # Catch potential unique constraint violation
+                session.rollback()
+                print(f"Error adding category '{name}' for user {user_id}: {e}")
+                if 'uq_user_category_name_type' in str(e):
+                     return None, f"Категория с именем '{name}' и типом '{type.value}' уже существует."
+                else:
+                     return None, f"Ошибка базы данных: {e}"
+            except Exception as e:
+                session.rollback()
+                print(f"Error adding category '{name}' for user {user_id}: {e}")
+                return None, f"Произошла ошибка: {e}"
 
 
 # --- Instance Creation ---

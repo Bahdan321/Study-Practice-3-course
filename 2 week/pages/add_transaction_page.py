@@ -257,7 +257,7 @@ def AddTransactionView(page: ft.Page):
                     ft.icons.ARROW_BACK, on_click=lambda _: page.go("/home")
                 ),
                 bgcolor=ft.colors.with_opacity(
-                    0.1, ft.colors.WHITE10
+                    0.1, ft.colors.with_opacity(0.5, ft.colors.WHITE)
                 ),  # Match theme if needed
             ),
             ft.Tabs(
@@ -286,7 +286,7 @@ def AddTransactionView(page: ft.Page):
                         date_button,
                         description_field,
                         # Add Tags, Photo later if needed
-                        ft.Divider(height=10, color=ft.colors.TRANSPARENT),
+                        ft.Divider(height=10, color=ft.colors.with_opacity(0.5, ft.colors.WHITE)),
                         error_text,
                         ft.Row(  # Center the add button
                             [add_button], alignment=ft.MainAxisAlignment.CENTER
