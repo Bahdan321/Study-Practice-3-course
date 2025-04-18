@@ -2,7 +2,8 @@ import os
 import datetime
 import secrets
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, select, or_, func, update, delete
+from sqlalchemy import create_engine, select, or_, func, update, delete, and_
+from sqlalchemy.sql import functions
 from sqlalchemy.orm import sessionmaker, Session as SQLAlchemySession, joinedload
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -719,6 +720,101 @@ class DatabaseManager:
         # 4. Adjust account balance (add if expense, subtract if income).
         # 5. Commit atomically.
         return False, "Delete transaction functionality not yet implemented."
+
+    def get_transactions_summary(
+        self,
+        user_id: int,
+        account_id: int,
+        transaction_type: TransactionType,
+        start_date: datetime.date,
+        end_date: datetime.date,
+    ):
+        """
+        Fetches transactions for a specific account, type, and date range,
+        and calculates the total sum for that period.
+        Returns a tuple: (list_of_transactions, total_sum)
+        """
+        if not isinstance(transaction_type, TransactionType):
+            try:
+                transaction_type = TransactionType(transaction_type)
+            except ValueError:
+                print(f"Invalid transaction type provided: {transaction_type}")
+                return [], 0.0  # Return empty list and zero sum on error
+
+        # Ensure end_date includes the whole day
+        end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
+        start_datetime = datetime.datetime.combine(start_date, datetime.time.min)
+
+        with self._get_session() as session:
+            try:
+                # First, verify the account belongs to the user (important for security)
+                account_check = session.execute(
+                    select(Account.account_id).where(
+                        Account.account_id == account_id, Account.user_id == user_id
+                    )
+                ).scalar_one_or_none()
+
+                if account_check is None:
+                    print(
+                        f"Access denied or account {account_id} not found for user {user_id}."
+                    )
+                    return [], 0.0
+
+                # Query for transactions within the date range and type
+                stmt_transactions = (
+                    select(Transaction)
+                    .where(
+                        and_(
+                            Transaction.account_id == account_id,
+                            Transaction.type == transaction_type,
+                            Transaction.transaction_date >= start_datetime,
+                            Transaction.transaction_date <= end_datetime,
+                        )
+                    )
+                    .options(joinedload(Transaction.category))  # Eager load category
+                    .order_by(
+                        Transaction.transaction_date.desc(),
+                        Transaction.transaction_id.desc(),
+                    )
+                )
+                transactions_result = session.execute(stmt_transactions).scalars().all()
+
+                # Query for the sum of amounts for the same criteria
+                stmt_sum = select(functions.sum(Transaction.amount)).where(
+                    and_(
+                        Transaction.account_id == account_id,
+                        Transaction.type == transaction_type,
+                        Transaction.transaction_date >= start_datetime,
+                        Transaction.transaction_date <= end_datetime,
+                    )
+                )
+                total_sum_result = session.execute(stmt_sum).scalar_one_or_none()
+                total_sum = total_sum_result if total_sum_result is not None else 0.0
+
+                # Format transactions into dictionaries
+                formatted_transactions = [
+                    {
+                        "transaction_id": t.transaction_id,
+                        "account_id": t.account_id,
+                        "category_id": t.category_id,
+                        "amount": t.amount,
+                        "transaction_date": t.transaction_date.isoformat(),
+                        "description": t.description,
+                        "type": t.type.value,
+                        "category_name": t.category.name if t.category else "N/A",
+                        "category_icon": t.category.icon if t.category else None,
+                    }
+                    for t in transactions_result
+                ]
+
+                return formatted_transactions, total_sum
+
+            except Exception as e:
+                print(
+                    f"Error retrieving transaction summary for account {account_id}: {e}"
+                )
+                session.rollback()
+                return [], 0.0
 
 
 # --- Instance Creation ---

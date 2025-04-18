@@ -229,6 +229,7 @@ def AddTransactionView(page: ft.Page):
 
         if success:
             page.go("/home")  # Go back to home page on success
+            # Correct the method name here
             page.show_snack_bar(
                 ft.SnackBar(ft.Text("Транзакция добавлена!"), open=True)
             )
