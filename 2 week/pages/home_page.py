@@ -33,7 +33,8 @@ def HomeView(page: ft.Page):
         "selected_account_currency": "₽",
         "current_tab_index": 0, # 0: Expenses, 1: Income
         "current_period_type": "month", # 'day', 'week', 'month', 'year', 'custom'
-        "current_date": datetime.date.today() # The reference date for period calculation
+        "current_date": datetime.date.today(), # The reference date for period calculation
+        "current_offset": 0,
     }
 
     initial_header_balance = "0.00 ₽"

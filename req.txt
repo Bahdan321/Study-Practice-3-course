@@ -1,6 +1,7 @@
 flet
 bcrypt
 werkzeug
-sqlalchemy
-psycopg2-binary
+sqlalchemy[asyncio]
+greenlet
+asyncpg
 python-dotenv
