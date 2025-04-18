@@ -97,7 +97,11 @@ def AddAccountView(page: ft.Page):
     return ft.View(
         "/accounts/add",
         [
-            ft.AppBar(title=ft.Text("Добавить новый счет"), actions=[]),
+            ft.AppBar(
+                title=ft.Text("Добавить новый счет"),
+                actions=[],
+                bgcolor=ft.colors.with_opacity(0.9, ft.colors.BLACK),
+                ),
             ft.Column(
                 [
                     account_name_field,
@@ -122,5 +126,6 @@ def AddAccountView(page: ft.Page):
         ],
         vertical_alignment=ft.MainAxisAlignment.START,
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        padding=10
+        padding=10,
+        bgcolor=ft.colors.with_opacity(0.8, ft.colors.BLACK),
     )

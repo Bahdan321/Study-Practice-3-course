@@ -86,20 +86,45 @@ def AddTransactionView(page: ft.Page):
         options=[
         ],
     )
+    
+    def handle_date_change(e):
+        """Update selected date state and button text."""
+        # The DatePicker's value is already a datetime object
+        picked_date = e.control.value
+        if picked_date:
+            print(f"Date picked: {picked_date}") # Debug log
+            # Ensure we store only the date part if time is not needed,
+            # or keep the datetime if time might be relevant later.
+            # Let's keep the datetime for now as selected_date ref expects it.
+            selected_date.current = picked_date
+            date_button.text = selected_date.current.strftime("%d.%m.%Y")
+            validate_input()  # Re-validate
+            page.update() # Update the button text and potentially the add button state
+
+    # --- Define open_date_picker function ---
+    def open_date_picker(e):
+        """Opens the date picker dialog."""
+        # Set the picker's current value before opening
+        date_picker.value = selected_date.current
+        date_picker.update() # Ensure value is set
+        page.open(date_picker) # Use page.open for DatePicker
 
     date_button = ft.ElevatedButton(
         text=selected_date.current.strftime("%d.%m.%Y"),  # Format date
         icon=ft.icons.CALENDAR_MONTH,
-        # on_click=lambda e: date_picker.pick_date() # Add date picker later
+        # --- Assign the open_date_picker function to on_click ---
+        on_click=open_date_picker
     )
     date_picker = ft.DatePicker(
         first_date=datetime.datetime(2020, 1, 1),
         last_date=datetime.datetime.now().replace(
             year=datetime.datetime.now().year + 5
         ),
-        # on_change=handle_date_change, # Add handler later
-        # on_dismiss=lambda e: print("Date picker dismissed"),
-        current_date=selected_date.current,
+        # --- Assign handle_date_change to on_change ---
+        on_change=handle_date_change,
+        on_dismiss=lambda e: print("Date picker dismissed"), # Keep or remove dismiss handler as needed
+        current_date=selected_date.current, # Sets the initial view month
+        value=selected_date.current # Sets the initially selected date
     )
     page.overlay.append(date_picker)  # Add date picker to page overlay
 
@@ -152,14 +177,6 @@ def AddTransactionView(page: ft.Page):
             currency_text.value = account["currency_symbol"]
         validate_input()  # Re-validate
         page.update()
-
-    def handle_date_change(e):
-        """Update selected date state and button text."""
-        if e.control.value:
-            selected_date.current = e.control.value  # Store the datetime object
-            date_button.text = selected_date.current.strftime("%d.%m.%Y")
-            validate_input()  # Re-validate
-            page.update()
 
     def validate_input(*args):
         """Enable/disable add button based on required fields."""
@@ -240,8 +257,8 @@ def AddTransactionView(page: ft.Page):
     # --- Assign handlers ---
     amount_field.on_change = validate_input
     account_dropdown.on_change = handle_account_change
-    category_dropdown.on_change = validate_input  # Just validate when category changes
-    date_picker.on_change = handle_date_change
+    category_dropdown.on_change = validate_input
+    # date_picker.on_change is already assigned during definition
     add_button.on_click = save_transaction
 
     # --- Initial Setup ---
@@ -256,9 +273,7 @@ def AddTransactionView(page: ft.Page):
                 leading=ft.IconButton(
                     ft.icons.ARROW_BACK, on_click=lambda _: page.go("/home")
                 ),
-                bgcolor=ft.colors.with_opacity(
-                    0.1, ft.colors.with_opacity(0.5, ft.colors.WHITE)
-                ),  # Match theme if needed
+                bgcolor=ft.colors.with_opacity(0.9, ft.colors.BLACK),
             ),
             ft.Tabs(
                 selected_index=0 if initial_type == "expense" else 1,
@@ -298,6 +313,6 @@ def AddTransactionView(page: ft.Page):
                 ),
             ),
         ],
-        scroll=ft.ScrollMode.ADAPTIVE,  # View level scroll
-        # bgcolor=ft.colors.GREEN_900 # Match theme if needed
+        scroll=ft.ScrollMode.ADAPTIVE,
+        bgcolor=ft.colors.with_opacity(0.8, ft.colors.BLACK),
     )

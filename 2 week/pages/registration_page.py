@@ -64,4 +64,6 @@ def RegistrationView(page: ft.Page):
         ],
         vertical_alignment=ft.MainAxisAlignment.CENTER,
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+        bgcolor=ft.colors.with_opacity(0.8, ft.colors.BLACK),
+        
     )

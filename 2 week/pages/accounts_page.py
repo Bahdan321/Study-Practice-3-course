@@ -78,6 +78,7 @@ def AccountsView(page: ft.Page):
         [
             ft.AppBar(
                 title=ft.Text("Мои счета"),
+                bgcolor=ft.colors.with_opacity(0.9, ft.colors.BLACK),
                 actions=[
                     ft.IconButton(
                         ft.icons.ARROW_BACK,
@@ -112,4 +113,5 @@ def AccountsView(page: ft.Page):
         vertical_alignment=ft.MainAxisAlignment.START,
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
         padding=0,
+        bgcolor=ft.colors.with_opacity(0.8, ft.colors.BLACK),
     )

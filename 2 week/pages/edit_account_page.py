@@ -131,7 +131,10 @@ def EditAccountView(page: ft.Page, account_id: int):
         # Route includes the specific account ID
         f"/accounts/edit/{account_id}",
         [
-            ft.AppBar(title=ft.Text(f"Редактировать: {account_data['name']}")),
+            ft.AppBar(
+                title=ft.Text(f"Редактировать: {account_data['name']}"),
+                bgcolor=ft.colors.with_opacity(0.9, ft.colors.BLACK),
+                ),
             ft.Column(
                 [
                     account_name_field,
@@ -156,5 +159,6 @@ def EditAccountView(page: ft.Page, account_id: int):
         ],
         vertical_alignment=ft.MainAxisAlignment.START,
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-        padding=10
+        padding=10,
+        bgcolor=ft.colors.with_opacity(0.8, ft.colors.BLACK),
     )

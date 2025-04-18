@@ -540,7 +540,7 @@ def HomeView(page: ft.Page):
                 icon=ft.icons.ARROW_LEFT,
                 on_click=lambda e: on_date_nav_click(e, -1),
                 tooltip="Предыдущий период",
-                icon_color=ft.colors.WHITE,
+                icon_color=ft.colors.WHITE, # Keep white for visibility on black
             ),
             # Wrap the Text in a Container to make it clickable
             ft.Container(
@@ -550,6 +550,8 @@ def HomeView(page: ft.Page):
                     weight=ft.FontWeight.BOLD,
                     size=16,
                     text_align=ft.TextAlign.CENTER,
+                    # Text color defaults should be okay, or set explicitly:
+                    # color=ft.colors.WHITE,
                 ),
                 on_click=open_date_picker,  # Open calendar on click
                 tooltip="Выбрать дату",
@@ -561,7 +563,7 @@ def HomeView(page: ft.Page):
                 icon=ft.icons.ARROW_RIGHT,
                 on_click=lambda e: on_date_nav_click(e, 1),
                 tooltip="Следующий период",
-                icon_color=ft.colors.WHITE,
+                icon_color=ft.colors.WHITE, # Keep white for visibility on black
             ),
         ],
         alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
@@ -575,6 +577,8 @@ def HomeView(page: ft.Page):
         size=24,
         weight=ft.FontWeight.BOLD,
         text_align=ft.TextAlign.CENTER,
+        # Text color defaults should be okay, or set explicitly:
+        # color=ft.colors.WHITE,
     )
 
     # Tabs for Expenses/Income
@@ -613,7 +617,9 @@ def HomeView(page: ft.Page):
             ft.AppBar(
                 title=ft.Text(f"Привет, {username}!"),
                 center_title=True,
-                bgcolor=ft.colors.with_opacity(0.05, ft.colors.WHITE10),
+                # Change AppBar background to a dark grey/black
+                bgcolor=ft.colors.with_opacity(0.85, ft.colors.BLACK), # Example: Semi-transparent black
+                # Or use a solid dark color: bgcolor=ft.colors.GREY_900,
                 actions=[
                     ft.IconButton(
                         icon=ft.icons.ACCOUNT_BALANCE_WALLET_OUTLINED,
@@ -633,7 +639,7 @@ def HomeView(page: ft.Page):
                 gradient=ft.LinearGradient(
                     begin=ft.alignment.top_center,
                     end=ft.alignment.bottom_center,
-                    colors=[ft.colors.BLUE_GREY_800, ft.colors.BLUE_GREY_900],
+                    colors=[ft.colors.GREY_900, ft.colors.BLACK], # Example: Dark grey to black
                 ),
                 padding=ft.padding.only(top=10, bottom=0, left=15, right=15),
                 expand=True,  # Make container fill available space
@@ -643,7 +649,9 @@ def HomeView(page: ft.Page):
                         header_balance_display,
                         ft.Divider(
                             height=10,
-                            color=ft.colors.with_opacity(0.5, ft.colors.WHITE24),
+                            # Change divider color to be visible on dark background
+                            color=ft.colors.with_opacity(0.3, ft.colors.WHITE), # Example: Faint white
+                            # Or use a grey: color=ft.colors.GREY_700,
                         ),
                         # Period Buttons
                         period_buttons_row,
@@ -651,7 +659,9 @@ def HomeView(page: ft.Page):
                         date_navigator_row,
                         ft.Divider(
                             height=10,
-                            color=ft.colors.with_opacity(0.5, ft.colors.WHITE24),
+                            # Change divider color
+                            color=ft.colors.with_opacity(0.3, ft.colors.WHITE), # Example: Faint white
+                            # Or use a grey: color=ft.colors.GREY_700,
                         ),
                         # Summary (Total for period)
                         summary_display,
@@ -660,9 +670,9 @@ def HomeView(page: ft.Page):
                             tabs, # The ft.Tabs control is already defined with expand=True
                             border_radius=ft.border_radius.all(5),
                             padding=ft.padding.only(top=5),
-                            # --- Add expand=True to make the container fill horizontal space ---
                             expand=True,
-                            # --- End Add expand=True ---
+                            # Background for tabs container can be adjusted if needed
+                            # bgcolor=ft.colors.with_opacity(0.1, ft.colors.WHITE10),
                         ),
                     ],
                     spacing=10,  # Spacing between header elements
@@ -676,6 +686,8 @@ def HomeView(page: ft.Page):
                 padding=ft.padding.only(
                     bottom=70
                 ),  # Add padding below list to avoid FAB overlap
+                # Background for list container can be adjusted if needed
+                # bgcolor=ft.colors.BLACK,
             ),
         ],
         # Floating Action Button for adding transactions
@@ -683,11 +695,16 @@ def HomeView(page: ft.Page):
             icon=ft.icons.ADD,
             tooltip="Добавить транзакцию",
             on_click=add_transaction,
-            bgcolor=ft.colors.BLUE_ACCENT_700,
+            # Change FAB background color to a dark grey or contrasting color
+            bgcolor=ft.colors.GREY_800, # Example: Dark grey
+            # Or keep an accent but darker: bgcolor=ft.colors.BLUE_900,
+            # Ensure foreground (icon) color contrasts well (default is often white)
+            # foreground_color=ft.colors.WHITE,
         ),
         floating_action_button_location=ft.FloatingActionButtonLocation.CENTER_FLOAT,
         padding=0,  # Remove padding from View itself
-        bgcolor=ft.colors.BLUE_GREY_900,  # Background for the whole view area
+        # Change overall View background to black
+        bgcolor=ft.colors.BLACK,
     )
 
     # --- Trigger Initial Update ---
