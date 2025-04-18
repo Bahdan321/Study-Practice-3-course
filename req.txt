@@ -1,3 +1,6 @@
 flet
 bcrypt
 werkzeug
+sqlalchemy
+psycopg2-binary
+python-dotenv

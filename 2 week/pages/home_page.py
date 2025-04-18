@@ -86,19 +86,56 @@ def HomeView(page: ft.Page):
             header_balance_text.value = f"{selected_account['balance']:.2f} {selected_account['currency_symbol']}"
             page.update()
 
+    def go_to_add_account(e):
+        """Closes the dialog and navigates to the add account page."""
+        page.update()
+        page.go("/accounts/add")
+
+    def close_dialog(e):
+        """Closes the dialog."""
+        page.dialog.open = False
+        page.update()
+
     def add_transaction(e):
-        transaction_type = "expense"
+        # Check if the user has any accounts FIRST
+        if not user_accounts:
+            print("Нет счетов")
+            # If no accounts, show an alert dialog
+            alert_dialog = ft.AlertDialog(
+                modal=True,
+                title=ft.Text("Нет счетов"),
+                content=ft.Text("Сначала добавьте счет, чтобы создать транзакцию."),
+                actions=[
+                    ft.ElevatedButton(
+                        "Добавить счет",
+                        on_click=go_to_add_account,
+                    ),
+                    ft.TextButton("Отмена", on_click=close_dialog),
+                ],
+                actions_alignment=ft.MainAxisAlignment.END,
+            )
+            page.open(alert_dialog)
+            page.update()
+            return  # Stop further execution
+
+        # --- If accounts exist, proceed as before ---
+        transaction_type = "expense"  # Default to expense for the main button
         acc_id_to_pass = selected_account_id
+        # This check might be redundant now if selected_account_id is always set when user_accounts exist
+        # but kept for safety.
         if acc_id_to_pass is None and user_accounts:
             acc_id_to_pass = user_accounts[0]["account_id"]
 
         # Save context for the add_transaction page
         page.session.set("add_transaction_type", transaction_type)
+        # Ensure we pass a valid account ID
         page.session.set("add_transaction_account_id", acc_id_to_pass)
-        page.session.set(
-            "initial_account_id", acc_id_to_pass
-        )  # Исправлено: добавлено значение
+        # Set initial_account_id as well, seems required by add_transaction_page
+        page.session.set("initial_account_id", acc_id_to_pass)
 
+        print(
+            f"Navigating to /add_transaction with account_id: {acc_id_to_pass}"
+        )  # Debug log
         page.go("/add_transaction")
 
     # --- UI Components ---
