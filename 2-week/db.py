@@ -7,7 +7,6 @@ from sqlalchemy.sql import functions
 from sqlalchemy.orm import sessionmaker, Session as SQLAlchemySession, joinedload
 from werkzeug.security import generate_password_hash, check_password_hash
 
-# Import models
 from models.base import Base
 from models.user import User, UserRole
 from models.session import Session
@@ -16,7 +15,6 @@ from models.account import Account
 from models.category import Category, TransactionType
 from models.transaction import Transaction
 
-# Load environment variables from .env file
 load_dotenv()
 
 
@@ -29,187 +27,88 @@ class DatabaseManager:
         if sqlite:
             print("SQLITE!!!")
             db_url = "sqlite:///finance_manager.db"
-            self.engine = create_engine(
-                db_url, echo=False
-            )  # Set echo=True for debugging SQL
-
-            # Create session factory
+            self.engine = create_engine(db_url, echo=False)
             self.SessionFactory = sessionmaker(bind=self.engine)
-
             self._populate_default_currencies()
             self._populate_default_categories()
-
         else:
             db_user = os.getenv("DB_USER")
             db_password = os.getenv("DB_PASSWORD")
             db_host = os.getenv("DB_HOST")
             db_port = os.getenv("DB_PORT")
             db_name = os.getenv("DB_NAME")
-
             if not all([db_user, db_password, db_host, db_port, db_name]):
                 raise ValueError("Database connection details missing in .env file")
-
             db_url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-
-            # Create engine
-            self.engine = create_engine(
-                db_url, echo=False
-            )  # Set echo=True for debugging SQL
-
-            # Create session factory
+            self.engine = create_engine(db_url, echo=False)
             self.SessionFactory = sessionmaker(bind=self.engine)
-
             self._populate_default_currencies()
             self._populate_default_categories()
 
     def _create_tables(self):
-        """Creates tables defined in models using Base metadata."""
+        """Создает таблицы, определенные в models через Base.metadata."""
         try:
             print("TABLES")
             Base.metadata.create_all(self.engine)
             print("Tables checked/created successfully.")
         except Exception as e:
             print(f"Error creating tables: {e}")
-            # Depending on the error, you might want to raise it or handle it differently
             raise
 
     def _get_session(self) -> SQLAlchemySession:
-        """Provides a new session."""
+        """Создает и возвращает новую сессию."""
         return self.SessionFactory()
 
-    # === Default Data Population ===
-
     def _populate_default_currencies(self):
-        """Adds default currencies if the table is empty."""
+        """Добавляет дефолтные валюты, если таблица пуста."""
         with self._get_session() as session:
             try:
-                # Check if currencies already exist
-                count = session.execute(
-                    select(func.count(Currency.currency_id))
-                ).scalar_one_or_none()
+                count = session.execute(select(func.count(Currency.currency_id))).scalar_one_or_none()
                 if count is None or count == 0:
                     default_currencies = [
                         Currency(code="RUB", name="Российский рубль", symbol="₽"),
                         Currency(code="USD", name="Доллар США", symbol="$"),
                         Currency(code="EUR", name="Евро", symbol="€"),
-                        # Add more currencies as needed
                     ]
                     session.add_all(default_currencies)
                     session.commit()
                     print("Default currencies added.")
-                # else:
-                #     print("Currencies table already populated.")
             except Exception as e:
                 print(f"Error populating default currencies: {e}")
                 session.rollback()
 
     def _populate_default_categories(self):
-        """Adds default expense and income categories if none exist."""
+        """Добавляет дефолтные категории расходов и доходов, если их нет."""
         with self._get_session() as session:
             try:
-                # Check for existing default categories (user_id IS NULL)
                 count = session.execute(
-                    select(func.count(Category.category_id)).where(
-                        Category.user_id == None
-                    )  # noqa E711
+                    select(func.count(Category.category_id)).where(Category.user_id == None)
                 ).scalar_one_or_none()
-
                 if count is None or count == 0:
                     default_categories = [
-                        # Expenses
-                        Category(
-                            user_id=None,
-                            name="Продукты",
-                            type=TransactionType.expense,
-                            icon="shopping_cart",
-                        ),
-                        Category(
-                            user_id=None,
-                            name="Транспорт",
-                            type=TransactionType.expense,
-                            icon="directions_bus",
-                        ),
-                        Category(
-                            user_id=None,
-                            name="Жилье",
-                            type=TransactionType.expense,
-                            icon="home",
-                        ),
-                        Category(
-                            user_id=None,
-                            name="Кафе и рестораны",
-                            type=TransactionType.expense,
-                            icon="restaurant",
-                        ),
-                        Category(
-                            user_id=None,
-                            name="Развлечения",
-                            type=TransactionType.expense,
-                            icon="local_movies",
-                        ),
-                        Category(
-                            user_id=None,
-                            name="Одежда",
-                            type=TransactionType.expense,
-                            icon="checkroom",
-                        ),
-                        Category(
-                            user_id=None,
-                            name="Здоровье",
-                            type=TransactionType.expense,
-                            icon="local_hospital",
-                        ),
-                        Category(
-                            user_id=None,
-                            name="Подарки",
-                            type=TransactionType.expense,
-                            icon="card_giftcard",
-                        ),
-                        Category(
-                            user_id=None,
-                            name="Другое (Расходы)",
-                            type=TransactionType.expense,
-                            icon="category",
-                        ),
-                        # Income
-                        Category(
-                            user_id=None,
-                            name="Зарплата",
-                            type=TransactionType.income,
-                            icon="work",
-                        ),
-                        Category(
-                            user_id=None,
-                            name="Подарки",
-                            type=TransactionType.income,
-                            icon="card_giftcard",
-                        ),
-                        Category(
-                            user_id=None,
-                            name="Инвестиции",
-                            type=TransactionType.income,
-                            icon="trending_up",
-                        ),
-                        Category(
-                            user_id=None,
-                            name="Другое (Доходы)",
-                            type=TransactionType.income,
-                            icon="category",
-                        ),
+                        Category(user_id=None, name="Продукты", type=TransactionType.expense, icon="shopping_cart"),
+                        Category(user_id=None, name="Транспорт", type=TransactionType.expense, icon="directions_bus"),
+                        Category(user_id=None, name="Жилье", type=TransactionType.expense, icon="home"),
+                        Category(user_id=None, name="Кафе и рестораны", type=TransactionType.expense, icon="restaurant"),
+                        Category(user_id=None, name="Развлечения", type=TransactionType.expense, icon="local_movies"),
+                        Category(user_id=None, name="Одежда", type=TransactionType.expense, icon="checkroom"),
+                        Category(user_id=None, name="Здоровье", type=TransactionType.expense, icon="local_hospital"),
+                        Category(user_id=None, name="Подарки", type=TransactionType.expense, icon="card_giftcard"),
+                        Category(user_id=None, name="Другое (Расходы)", type=TransactionType.expense, icon="category"),
+                        Category(user_id=None, name="Зарплата", type=TransactionType.income, icon="work"),
+                        Category(user_id=None, name="Подарки", type=TransactionType.income, icon="card_giftcard"),
+                        Category(user_id=None, name="Инвестиции", type=TransactionType.income, icon="trending_up"),
+                        Category(user_id=None, name="Другое (Доходы)", type=TransactionType.income, icon="category"),
                     ]
                     session.add_all(default_categories)
                     session.commit()
                     print("Default categories added.")
-                # else:
-                #     print("Default categories already exist.")
             except Exception as e:
                 print(f"Error populating default categories: {e}")
                 session.rollback()
 
-    # === User Management ===
-
     def add_user(self, username, email, password):
-        """Adds a new user to the database."""
+        """Добавляет нового пользователя в базу данных."""
         hashed_password = generate_password_hash(password)
         new_user = User(username=username, email=email, password_hash=hashed_password)
         with self._get_session() as session:
@@ -218,42 +117,33 @@ class DatabaseManager:
                 session.commit()
                 print(f"User '{username}' added successfully.")
                 return True
-            except (
-                Exception
-            ) as e:  # Catch specific exceptions like IntegrityError later
+            except Exception as e:
                 print(f"Error adding user '{username}': {e}")
                 session.rollback()
                 return False
 
     def verify_user(self, identifier, password):
-        """Verifies user credentials by username or email."""
+        """Проверяет учетные данные пользователя по имени или email."""
         with self._get_session() as session:
             try:
                 stmt = select(User).where(
                     or_(User.username == identifier, User.email == identifier)
                 )
                 user = session.execute(stmt).scalar_one_or_none()
-
                 if user and check_password_hash(user.password_hash, password):
-                    # Return user data as a dictionary-like object (Row) or map to dict
-                    # Using __dict__ might include SQLAlchemy internal state, be careful
-                    # A safer approach is to explicitly create a dict
                     return {
                         "user_id": user.user_id,
                         "username": user.username,
                         "email": user.email,
-                        "role": user.role.value,  # Return enum value
-                        # Add other fields as needed, but avoid password_hash
+                        "role": user.role.value,
                     }
                 return None
             except Exception as e:
                 print(f"Error verifying user '{identifier}': {e}")
                 return None
 
-    # === Session Management ===
-
     def create_session(self, user_id, duration_days=30):
-        """Creates a persistent session token for a user."""
+        """Создает постоянный токен сессии для пользователя."""
         token = secrets.token_hex(32)
         expires_at = datetime.datetime.utcnow() + datetime.timedelta(days=duration_days)
         new_session = Session(user_id=user_id, token=token, expires_at=expires_at)
@@ -269,7 +159,7 @@ class DatabaseManager:
                 return None
 
     def get_user_by_session_token(self, token):
-        """Retrieves user information based on a valid session token."""
+        """Получает данные пользователя по действующему токену сессии."""
         with self._get_session() as session:
             try:
                 stmt = (
@@ -279,10 +169,8 @@ class DatabaseManager:
                         Session.expires_at > datetime.datetime.utcnow(),
                     )
                     .options(joinedload(Session.user))
-                )  # Eager load user data
-
+                )
                 valid_session = session.execute(stmt).scalar_one_or_none()
-
                 if valid_session and valid_session.user:
                     user = valid_session.user
                     return {
@@ -291,17 +179,13 @@ class DatabaseManager:
                         "email": user.email,
                         "role": user.role.value,
                     }
-                # Optional: Clean up expired sessions here or in a separate task
-                # if valid_session is None:
-                #     self.delete_session(token) # Delete if found but expired
-
                 return None
             except Exception as e:
                 print(f"Error validating session token '{token[:8]}...': {e}")
                 return None
 
     def delete_session(self, token):
-        """Deletes a session token (logout)."""
+        """Удаляет токен сессии (выход из системы)."""
         with self._get_session() as session:
             try:
                 stmt = delete(Session).where(Session.token == token)
@@ -318,15 +202,12 @@ class DatabaseManager:
                 session.rollback()
                 return False
 
-    # === Currency Management ===
-
     def get_currencies(self):
-        """Retrieves all available currencies."""
+        """Получает все доступные валюты."""
         with self._get_session() as session:
             try:
                 stmt = select(Currency).order_by(Currency.code)
                 currencies = session.execute(stmt).scalars().all()
-                # Convert to list of dictionaries
                 return [
                     {
                         "currency_id": c.currency_id,
@@ -340,10 +221,8 @@ class DatabaseManager:
                 print(f"Error retrieving currencies: {e}")
                 return []
 
-    # === Account Management ===
-
     def get_accounts_by_user(self, user_id):
-        """Retrieves all accounts for a specific user, including currency info."""
+        """Получает все счета для конкретного пользователя с информацией о валюте."""
         with self._get_session() as session:
             try:
                 stmt = (
@@ -351,10 +230,8 @@ class DatabaseManager:
                     .where(Account.user_id == user_id)
                     .options(joinedload(Account.currency))
                     .order_by(Account.name)
-                )  # Eager load currency
-
+                )
                 accounts = session.execute(stmt).scalars().all()
-                # Convert to list of dictionaries
                 return [
                     {
                         "account_id": acc.account_id,
@@ -364,7 +241,7 @@ class DatabaseManager:
                         "currency_id": acc.currency_id,
                         "description": acc.description,
                         "icon": acc.icon,
-                        "currency_code": acc.currency.code,  # Add currency details
+                        "currency_code": acc.currency.code,
                         "currency_symbol": acc.currency.symbol,
                     }
                     for acc in accounts
@@ -374,15 +251,14 @@ class DatabaseManager:
                 return []
 
     def get_account_by_id(self, account_id, user_id):
-        """Retrieves a specific account by its ID, ensuring it belongs to the user."""
+        """Получает конкретный счет по его ID, проверяя принадлежность пользователю."""
         with self._get_session() as session:
             try:
                 stmt = (
                     select(Account)
                     .where(Account.account_id == account_id, Account.user_id == user_id)
                     .options(joinedload(Account.currency))
-                )  # Eager load currency
-
+                )
                 account = session.execute(stmt).scalar_one_or_none()
                 if account:
                     return {
@@ -398,13 +274,11 @@ class DatabaseManager:
                     }
                 return None
             except Exception as e:
-                print(
-                    f"Error retrieving account ID {account_id} for user_id {user_id}: {e}"
-                )
+                print(f"Error retrieving account ID {account_id} for user_id {user_id}: {e}")
                 return None
 
     def add_account(self, user_id, name, balance, currency_id, description, icon):
-        """Adds a new account for the user."""
+        """Добавляет новый счет для пользователя."""
         new_account = Account(
             user_id=user_id,
             name=name,
@@ -418,233 +292,124 @@ class DatabaseManager:
                 session.add(new_account)
                 session.commit()
                 print(f"Account '{name}' added successfully for user_id {user_id}.")
-                return (
-                    True,
-                    "Account added successfully.",
-                )  # Return tuple (success, message)
+                return True, "Account added successfully."
             except Exception as e:
                 print(f"Error adding account '{name}' for user_id {user_id}: {e}")
                 session.rollback()
                 return False, f"Database error: {e}"
 
-    def update_account(
-        self, account_id, user_id, name, balance, currency_id, description, icon
-    ):
-        """Updates an existing account, verifying ownership."""
+    def update_account(self, account_id, user_id, name, balance, currency_id, description, icon):
+        """Обновляет существующий счет с проверкой принадлежности."""
         with self._get_session() as session:
             try:
-                # Find the account first to ensure it exists and belongs to the user
                 stmt_select = select(Account).where(
                     Account.account_id == account_id, Account.user_id == user_id
                 )
                 account_to_update = session.execute(stmt_select).scalar_one_or_none()
-
                 if not account_to_update:
-                    print(
-                        f"Account ID {account_id} not found or does not belong to user_id {user_id}."
-                    )
+                    print(f"Account ID {account_id} not found or does not belong to user_id {user_id}.")
                     return False, "Account not found or access denied."
-
-                # Update the account fields
                 account_to_update.name = name
                 account_to_update.balance = balance
                 account_to_update.currency_id = currency_id
                 account_to_update.description = description
                 account_to_update.icon = icon
-
-                # Alternative using update statement (less ORM-like but potentially more efficient)
-                # stmt_update = update(Account).where(
-                #     Account.account_id == account_id,
-                #     Account.user_id == user_id
-                # ).values(
-                #     name=name,
-                #     balance=balance,
-                #     currency_id=currency_id,
-                #     description=description,
-                #     icon=icon
-                # )
-                # result = session.execute(stmt_update)
-
                 session.commit()
-                print(
-                    f"Account ID {account_id} updated successfully for user_id {user_id}."
-                )
+                print(f"Account ID {account_id} updated successfully for user_id {user_id}.")
                 return True, "Account updated successfully."
-
-                # if result.rowcount == 0: # Check if update statement affected rows
-                #     print(f"Account ID {account_id} not found or does not belong to user_id {user_id}. No update performed.")
-                #     session.rollback() # Rollback if update didn't happen (though select should prevent this)
-                #     return False, "Account not found or access denied."
-                # else:
-                #     session.commit()
-                #     print(f"Account ID {account_id} updated successfully for user_id {user_id}.")
-                #     return True, "Account updated successfully."
-
             except Exception as e:
-                print(
-                    f"Error updating account ID {account_id} for user_id {user_id}: {e}"
-                )
+                print(f"Error updating account ID {account_id} for user_id {user_id}: {e}")
                 session.rollback()
                 return False, f"Database error: {e}"
 
     def delete_account(self, account_id, user_id):
         """
-        Deletes an account and all its associated transactions, verifying ownership.
-        Returns (True, "Success message") or (False, "Error message").
+        Удаляет счет и все связанные с ним транзакции с проверкой принадлежности.
+        Возвращает (True, "Сообщение об успехе") или (False, "Сообщение об ошибке").
         """
         with self._get_session() as session:
             try:
-                # 1. Verify the account exists and belongs to the user
                 account_to_delete = session.execute(
-                    select(Account).where(
-                        Account.account_id == account_id, Account.user_id == user_id
-                    )
+                    select(Account).where(Account.account_id == account_id, Account.user_id == user_id)
                 ).scalar_one_or_none()
-
                 if not account_to_delete:
                     return False, "Account not found or access denied."
-
-                # 2. Delete associated transactions (important to do first due to FK constraints)
-                stmt_delete_transactions = delete(Transaction).where(
-                    Transaction.account_id == account_id
-                )
+                stmt_delete_transactions = delete(Transaction).where(Transaction.account_id == account_id)
                 result_trans = session.execute(stmt_delete_transactions)
-                print(
-                    f"Deleted {result_trans.rowcount} transactions for account ID {account_id}."
-                )
-
-                # 3. Delete the account itself
-                session.delete(account_to_delete)  # Use ORM delete
-
-                # Alternative: Use delete statement
-                # stmt_delete_account = delete(Account).where(
-                #     Account.account_id == account_id,
-                #     Account.user_id == user_id
-                # )
-                # result_acc = session.execute(stmt_delete_account)
-                # if result_acc.rowcount == 0:
-                #     # Should not happen if select worked, but good safety check
-                #     raise Exception("Account deletion failed unexpectedly after verification.")
-
-                # 4. Commit the changes
+                print(f"Deleted {result_trans.rowcount} transactions for account ID {account_id}.")
+                session.delete(account_to_delete)
                 session.commit()
-                print(
-                    f"Account ID {account_id} deleted successfully for user_id {user_id}."
-                )
+                print(f"Account ID {account_id} deleted successfully for user_id {user_id}.")
                 return True, "Account and associated transactions deleted successfully."
-
             except Exception as e:
                 session.rollback()
-                print(
-                    f"Error deleting account ID {account_id} for user_id {user_id}: {e}"
-                )
+                print(f"Error deleting account ID {account_id} for user_id {user_id}: {e}")
                 return False, f"Database error during deletion: {e}"
-
-    # === Category Management ===
 
     def get_categories_by_user_and_type(self, user_id, category_type: TransactionType):
         """
-        Retrieves categories for a user by type (expense/income),
-        including default categories (user_id IS NULL).
+        Получает категории для пользователя по типу (расход/доход),
+        включая дефолтные категории (user_id IS NULL).
         """
         if not isinstance(category_type, TransactionType):
             try:
-                category_type = TransactionType(
-                    category_type
-                )  # Convert string to enum if needed
+                category_type = TransactionType(category_type)
             except ValueError:
                 print(f"Invalid category type provided: {category_type}")
                 return []
-
         with self._get_session() as session:
             try:
                 stmt = (
                     select(Category)
                     .where(
-                        or_(
-                            Category.user_id == user_id, Category.user_id == None
-                        ),  # noqa E711
+                        or_(Category.user_id == user_id, Category.user_id == None),
                         Category.type == category_type,
                     )
                     .order_by(Category.user_id.desc().nullslast(), Category.name)
-                )  # Show user categories first
-
+                )
                 categories = session.execute(stmt).scalars().all()
                 return [
                     {
                         "category_id": cat.category_id,
                         "user_id": cat.user_id,
                         "name": cat.name,
-                        "type": cat.type.value,  # Return enum value
+                        "type": cat.type.value,
                         "icon": cat.icon,
                     }
                     for cat in categories
                 ]
             except Exception as e:
-                print(
-                    f"Error retrieving categories for user {user_id}, type {category_type.value}: {e}"
-                )
+                print(f"Error retrieving categories for user {user_id}, type {category_type.value}: {e}")
                 return []
 
-    # === Transaction Management ===
-
-    def add_transaction(
-        self,
-        account_id,
-        category_id,
-        amount,
-        transaction_date,
-        description,
-        transaction_type: TransactionType,
-    ):
+    def add_transaction(self, account_id, category_id, amount, transaction_date, description, transaction_type: TransactionType):
         """
-        Adds a new transaction and updates the corresponding account balance atomically.
-        Returns (True, "Success message") or (False, "Error message").
+        Добавляет новую транзакцию и атомарно обновляет баланс счета.
+        Возвращает (True, "Сообщение об успехе") или (False, "Сообщение об ошибке").
         """
         if not isinstance(transaction_type, TransactionType):
             try:
-                transaction_type = TransactionType(
-                    transaction_type
-                )  # Convert string to enum if needed
+                transaction_type = TransactionType(transaction_type)
             except ValueError:
                 return False, "Invalid transaction type."
-
         if amount <= 0:
             return False, "Amount must be positive."
-
-        # Ensure transaction_date is a datetime object if passed as string
         if isinstance(transaction_date, str):
             try:
-                # Adjust format if needed (e.g., '%Y-%m-%d %H:%M:%S')
-                # Assuming ISO format from the previous code
-                transaction_date = datetime.datetime.fromisoformat(
-                    transaction_date.replace(" ", "T")
-                )
+                transaction_date = datetime.datetime.fromisoformat(transaction_date.replace(" ", "T"))
             except ValueError as e:
-                print(
-                    f"Error parsing transaction date string '{transaction_date}': {e}"
-                )
+                print(f"Error parsing transaction date string '{transaction_date}': {e}")
                 return False, "Invalid date format."
         elif not isinstance(transaction_date, datetime.datetime):
             return False, "Invalid transaction date type."
-
         with self._get_session() as session:
             try:
-                # Start a transaction block (though SQLAlchemy sessions often manage this implicitly)
-                # Explicit begin() can be used if needed for complex scenarios or specific isolation levels
-                # session.begin()
-
-                # 1. Fetch the account to update its balance
                 account_to_update = session.get(Account, account_id)
                 if not account_to_update:
                     raise ValueError(f"Account with ID {account_id} not found.")
-
-                # 2. Fetch the category to ensure it exists (optional, FK constraint handles this)
                 category_exists = session.get(Category, category_id)
                 if not category_exists:
                     raise ValueError(f"Category with ID {category_id} not found.")
-
-                # 3. Create the new transaction object
                 new_transaction = Transaction(
                     account_id=account_id,
                     category_id=category_id,
@@ -654,94 +419,56 @@ class DatabaseManager:
                     type=transaction_type,
                 )
                 session.add(new_transaction)
-
-                # 4. Update the account balance
                 if transaction_type == TransactionType.income:
                     account_to_update.balance += amount
-                else:  # expense
+                else:
                     account_to_update.balance -= amount
-
-                # Flush to send changes to DB and get transaction_id if needed before commit
-                # session.flush()
-                # transaction_id = new_transaction.transaction_id
-
-                # 5. Commit the session (saves transaction and account update atomically)
                 session.commit()
-
-                print(
-                    f"Transaction ({transaction_type.value}) of {amount} added for account ID {account_id}. New balance: {account_to_update.balance}"
-                )
+                print(f"Transaction ({transaction_type.value}) of {amount} added for account ID {account_id}. New balance: {account_to_update.balance}")
                 return True, "Transaction added successfully."
-
-            except (
-                Exception
-            ) as e:  # Catch specific errors like IntegrityError, ValueError
-                session.rollback()  # Roll back changes on any error
+            except Exception as e:
+                session.rollback()
                 print(f"Error adding transaction or updating balance: {e}")
-                # Provide more specific user feedback if possible
                 if "violates foreign key constraint" in str(e):
                     if "fk_transactions_account_id_accounts" in str(e):
-                        return (
-                            False,
-                            f"Error: Account with ID {account_id} does not exist.",
-                        )
+                        return False, f"Error: Account with ID {account_id} does not exist."
                     elif "fk_transactions_category_id_categories" in str(e):
-                        return (
-                            False,
-                            f"Error: Category with ID {category_id} does not exist.",
-                        )
-                elif isinstance(e, ValueError):  # Catch our explicit ValueErrors
+                        return False, f"Error: Category with ID {category_id} does not exist."
+                elif isinstance(e, ValueError):
                     return False, str(e)
                 else:
                     return False, f"Database error: {e}"
 
     def get_transactions_by_account(self, account_id, user_id, limit=50, offset=0):
-        """Gets recent transactions for a specific account owned by the user."""
+        """Получает недавние транзакции для конкретного счета, принадлежащего пользователю."""
         with self._get_session() as session:
             try:
-                # First, verify the account belongs to the user
                 account = session.execute(
-                    select(Account.account_id).where(
-                        Account.account_id == account_id, Account.user_id == user_id
-                    )
+                    select(Account.account_id).where(Account.account_id == account_id, Account.user_id == user_id)
                 ).scalar_one_or_none()
-
                 if account is None:
-                    print(
-                        f"Access denied or account {account_id} not found for user {user_id}."
-                    )
+                    print(f"Access denied or account {account_id} not found for user {user_id}.")
                     return []
-
-                # Fetch transactions, joining with Category for name/icon
                 stmt = (
                     select(Transaction)
                     .where(Transaction.account_id == account_id)
                     .options(joinedload(Transaction.category))
-                    .order_by(
-                        Transaction.transaction_date.desc(),
-                        Transaction.transaction_id.desc(),
-                    )
+                    .order_by(Transaction.transaction_date.desc(), Transaction.transaction_id.desc())
                     .limit(limit)
                     .offset(offset)
                 )
-
                 transactions = session.execute(stmt).scalars().all()
-
-                # Convert to list of dictionaries for Flet compatibility
                 return [
                     {
                         "transaction_id": t.transaction_id,
                         "account_id": t.account_id,
                         "category_id": t.category_id,
                         "amount": t.amount,
-                        "transaction_date": t.transaction_date.isoformat(),  # Format date as string
+                        "transaction_date": t.transaction_date.isoformat(),
                         "description": t.description,
                         "type": t.type.value,
-                        # Include category details (handle if category was deleted)
-                        "category_name": (
-                            t.category.name if t.category else "Deleted Category"
-                        ),
-                        "category_icon": t.category.icon if t.category else None,
+                        "category_name": (t.category.name if t.category else "Deleted Category"),
+                        "category_icon": (t.category.icon if t.category else None),
                     }
                     for t in transactions
                 ]
@@ -749,81 +476,44 @@ class DatabaseManager:
                 print(f"Error retrieving transactions for account {account_id}: {e}")
                 return []
 
-    # --- Placeholder methods for Update/Delete Transaction ---
-    # These are complex because they require adjusting account balances correctly,
-    # potentially involving fetching the *old* transaction amount.
-
     def update_transaction(self, transaction_id, user_id, **kwargs):
         """
-        Placeholder for updating a transaction.
-        Requires careful handling of balance adjustments.
+        Заглушка для обновления транзакции.
+        Необходима тщательная обработка корректировки баланса.
         """
-        print(
-            f"Warning: update_transaction (ID: {transaction_id}) not fully implemented."
-        )
-        # 1. Verify transaction exists and belongs to user (via account).
-        # 2. Get old transaction amount.
-        # 3. Update transaction details.
-        # 4. Calculate balance difference (new_amount - old_amount, considering type changes).
-        # 5. Update account balance.
-        # 6. Commit atomically.
+        print(f"Warning: update_transaction (ID: {transaction_id}) not fully implemented.")
         return False, "Update transaction functionality not yet implemented."
 
     def delete_transaction(self, transaction_id, user_id):
         """
-        Placeholder for deleting a transaction.
-        Requires careful handling of balance adjustments.
+        Заглушка для удаления транзакции.
+        Необходима тщательная обработка корректировки баланса.
         """
-        print(
-            f"Warning: delete_transaction (ID: {transaction_id}) not fully implemented."
-        )
-        # 1. Verify transaction exists and belongs to user (via account).
-        # 2. Get transaction amount and type.
-        # 3. Delete the transaction.
-        # 4. Adjust account balance (add if expense, subtract if income).
-        # 5. Commit atomically.
+        print(f"Warning: delete_transaction (ID: {transaction_id}) not fully implemented.")
         return False, "Delete transaction functionality not yet implemented."
 
-    def get_transactions_summary(
-        self,
-        user_id: int,
-        account_id: int,
-        transaction_type: TransactionType,
-        start_date: datetime.date,
-        end_date: datetime.date,
-    ):
+    def get_transactions_summary(self, user_id: int, account_id: int, transaction_type: TransactionType, start_date: datetime.date, end_date: datetime.date):
         """
-        Fetches transactions for a specific account, type, and date range,
-        and calculates the total sum for that period.
-        Returns a tuple: (list_of_transactions, total_sum)
+        Получает транзакции для конкретного счета, типа и в указанном диапазоне дат,
+        и вычисляет общую сумму за этот период.
+        Возвращает кортеж: (список транзакций, общая сумма)
         """
         if not isinstance(transaction_type, TransactionType):
             try:
                 transaction_type = TransactionType(transaction_type)
             except ValueError:
                 print(f"Invalid transaction type provided: {transaction_type}")
-                return [], 0.0  # Return empty list and zero sum on error
-
-        # Ensure end_date includes the whole day
+                return [], 0.0
         end_datetime = datetime.datetime.combine(end_date, datetime.time.max)
         start_datetime = datetime.datetime.combine(start_date, datetime.time.min)
-
         with self._get_session() as session:
             try:
-                # First, verify the account belongs to the user (important for security)
                 account_check = session.execute(
-                    select(Account.account_id).where(
-                        Account.account_id == account_id, Account.user_id == user_id
-                    )
+                    select(Account.account_id).where(Account.account_id == account_id, Account.user_id == user_id)
                 ).scalar_one_or_none()
-
                 if account_check is None:
-                    print(
-                        f"Access denied or account {account_id} not found for user {user_id}."
-                    )
+                    print(f"Access denied or account {account_id} not found for user {user_id}.")
                     return [], 0.0
-
-                # Query for transactions within the date range and type
                 stmt_transactions = (
                     select(Transaction)
                     .where(
@@ -834,15 +524,10 @@ class DatabaseManager:
                             Transaction.transaction_date <= end_datetime,
                         )
                     )
-                    .options(joinedload(Transaction.category))  # Eager load category
-                    .order_by(
-                        Transaction.transaction_date.desc(),
-                        Transaction.transaction_id.desc(),
-                    )
+                    .options(joinedload(Transaction.category))
+                    .order_by(Transaction.transaction_date.desc(), Transaction.transaction_id.desc())
                 )
                 transactions_result = session.execute(stmt_transactions).scalars().all()
-
-                # Query for the sum of amounts for the same criteria
                 stmt_sum = select(functions.sum(Transaction.amount)).where(
                     and_(
                         Transaction.account_id == account_id,
@@ -853,8 +538,6 @@ class DatabaseManager:
                 )
                 total_sum_result = session.execute(stmt_sum).scalar_one_or_none()
                 total_sum = total_sum_result if total_sum_result is not None else 0.0
-
-                # Format transactions into dictionaries
                 formatted_transactions = [
                     {
                         "transaction_id": t.transaction_id,
@@ -864,45 +547,36 @@ class DatabaseManager:
                         "transaction_date": t.transaction_date.isoformat(),
                         "description": t.description,
                         "type": t.type.value,
-                        "category_name": t.category.name if t.category else "N/A",
-                        "category_icon": t.category.icon if t.category else None,
+                        "category_name": (t.category.name if t.category else "N/A"),
+                        "category_icon": (t.category.icon if t.category else None),
                     }
                     for t in transactions_result
                 ]
-
                 return formatted_transactions, total_sum
-
             except Exception as e:
-                print(
-                    f"Error retrieving transaction summary for account {account_id}: {e}"
-                )
+                print(f"Error retrieving transaction summary for account {account_id}: {e}")
                 session.rollback()
                 return [], 0.0
 
-    def add_category(
-        self, user_id: int, name: str, type: TransactionType, icon: str | None = None
-    ):
-        """Adds a new custom category for a specific user."""
+    def add_category(self, user_id: int, name: str, type: TransactionType, icon: str | None = None):
+        """Добавляет новую пользовательскую категорию для конкретного пользователя."""
         if not isinstance(type, TransactionType):
             try:
-                type = TransactionType(type)  # Convert if string
+                type = TransactionType(type)
             except ValueError:
                 return None, "Invalid category type."
-
         new_category = Category(
             user_id=user_id,
-            name=name.strip(),  # Remove leading/trailing whitespace
+            name=name.strip(),
             type=type,
             icon=icon,
         )
-
         with self._get_session() as session:
             try:
                 session.add(new_category)
                 session.commit()
-                session.refresh(new_category)  # To get the generated category_id
+                session.refresh(new_category)
                 print(f"Custom category '{name}' added for user_id {user_id}.")
-                # Return the created category object (or its dict representation) and no error
                 return {
                     "category_id": new_category.category_id,
                     "user_id": new_category.user_id,
@@ -910,14 +584,11 @@ class DatabaseManager:
                     "type": new_category.type.value,
                     "icon": new_category.icon,
                 }, None
-            except Exception as e:  # Catch potential unique constraint violation
+            except Exception as e:
                 session.rollback()
                 print(f"Error adding category '{name}' for user {user_id}: {e}")
                 if "uq_user_category_name_type" in str(e):
-                    return (
-                        None,
-                        f"Категория с именем '{name}' и типом '{type.value}' уже существует.",
-                    )
+                    return None, f"Категория с именем '{name}' и типом '{type.value}' уже существует."
                 else:
                     return None, f"Ошибка базы данных: {e}"
             except Exception as e:
@@ -926,8 +597,6 @@ class DatabaseManager:
                 return None, f"Произошла ошибка: {e}"
 
 
-# --- Instance Creation ---
-# Create a single instance of the DatabaseManager for the application to use
 db_manager = DatabaseManager(sqlite=True)
 print("DatabaseManager instance created and initialized.")
 db_manager._create_tables()
