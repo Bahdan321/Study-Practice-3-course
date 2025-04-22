@@ -25,37 +25,47 @@ class DatabaseManager:
     Класс для работы с базой данных PostgreSQL через SQLAlchemy (синхронный).
     """
 
-    def __init__(self):
-        db_user = os.getenv("DB_USER")
-        db_password = os.getenv("DB_PASSWORD")
-        db_host = os.getenv("DB_HOST")
-        db_port = os.getenv("DB_PORT")
-        db_name = os.getenv("DB_NAME")
+    def __init__(self, sqlite: bool = False):
+        if sqlite:
+            print("SQLITE!!!")
+            db_url = "sqlite:///finance_manager.db"
+            self.engine = create_engine(
+                db_url, echo=False
+            )  # Set echo=True for debugging SQL
 
-        if not all([db_user, db_password, db_host, db_port, db_name]):
-            raise ValueError("Database connection details missing in .env file")
+            # Create session factory
+            self.SessionFactory = sessionmaker(bind=self.engine)
 
-        # Construct the database URL
-        # postgresql+psycopg2://user:password@host:port/database
-        db_url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+            self._populate_default_currencies()
+            self._populate_default_categories()
 
-        # Create engine
-        self.engine = create_engine(
-            db_url, echo=False
-        )  # Set echo=True for debugging SQL
+        else:
+            db_user = os.getenv("DB_USER")
+            db_password = os.getenv("DB_PASSWORD")
+            db_host = os.getenv("DB_HOST")
+            db_port = os.getenv("DB_PORT")
+            db_name = os.getenv("DB_NAME")
 
-        # Create session factory
-        self.SessionFactory = sessionmaker(bind=self.engine)
+            if not all([db_user, db_password, db_host, db_port, db_name]):
+                raise ValueError("Database connection details missing in .env file")
 
-        # Create tables if they don't exist
-        # self._create_tables()
-        # Populate default data if necessary
-        self._populate_default_currencies()
-        self._populate_default_categories()
+            db_url = f"postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+
+            # Create engine
+            self.engine = create_engine(
+                db_url, echo=False
+            )  # Set echo=True for debugging SQL
+
+            # Create session factory
+            self.SessionFactory = sessionmaker(bind=self.engine)
+
+            self._populate_default_currencies()
+            self._populate_default_categories()
 
     def _create_tables(self):
         """Creates tables defined in models using Base metadata."""
         try:
+            print("TABLES")
             Base.metadata.create_all(self.engine)
             print("Tables checked/created successfully.")
         except Exception as e:
@@ -499,10 +509,12 @@ class DatabaseManager:
                     Transaction.account_id == account_id
                 )
                 result_trans = session.execute(stmt_delete_transactions)
-                print(f"Deleted {result_trans.rowcount} transactions for account ID {account_id}.")
+                print(
+                    f"Deleted {result_trans.rowcount} transactions for account ID {account_id}."
+                )
 
                 # 3. Delete the account itself
-                session.delete(account_to_delete) # Use ORM delete
+                session.delete(account_to_delete)  # Use ORM delete
 
                 # Alternative: Use delete statement
                 # stmt_delete_account = delete(Account).where(
@@ -516,12 +528,16 @@ class DatabaseManager:
 
                 # 4. Commit the changes
                 session.commit()
-                print(f"Account ID {account_id} deleted successfully for user_id {user_id}.")
+                print(
+                    f"Account ID {account_id} deleted successfully for user_id {user_id}."
+                )
                 return True, "Account and associated transactions deleted successfully."
 
             except Exception as e:
                 session.rollback()
-                print(f"Error deleting account ID {account_id} for user_id {user_id}: {e}")
+                print(
+                    f"Error deleting account ID {account_id} for user_id {user_id}: {e}"
+                )
                 return False, f"Database error during deletion: {e}"
 
     # === Category Management ===
@@ -862,26 +878,29 @@ class DatabaseManager:
                 )
                 session.rollback()
                 return [], 0.0
-    def add_category(self, user_id: int, name: str, type: TransactionType, icon: str | None = None):
+
+    def add_category(
+        self, user_id: int, name: str, type: TransactionType, icon: str | None = None
+    ):
         """Adds a new custom category for a specific user."""
         if not isinstance(type, TransactionType):
             try:
-                type = TransactionType(type) # Convert if string
+                type = TransactionType(type)  # Convert if string
             except ValueError:
                 return None, "Invalid category type."
 
         new_category = Category(
             user_id=user_id,
-            name=name.strip(), # Remove leading/trailing whitespace
+            name=name.strip(),  # Remove leading/trailing whitespace
             type=type,
-            icon=icon
+            icon=icon,
         )
 
         with self._get_session() as session:
             try:
                 session.add(new_category)
                 session.commit()
-                session.refresh(new_category) # To get the generated category_id
+                session.refresh(new_category)  # To get the generated category_id
                 print(f"Custom category '{name}' added for user_id {user_id}.")
                 # Return the created category object (or its dict representation) and no error
                 return {
@@ -891,13 +910,16 @@ class DatabaseManager:
                     "type": new_category.type.value,
                     "icon": new_category.icon,
                 }, None
-            except Exception as e: # Catch potential unique constraint violation
+            except Exception as e:  # Catch potential unique constraint violation
                 session.rollback()
                 print(f"Error adding category '{name}' for user {user_id}: {e}")
-                if 'uq_user_category_name_type' in str(e):
-                     return None, f"Категория с именем '{name}' и типом '{type.value}' уже существует."
+                if "uq_user_category_name_type" in str(e):
+                    return (
+                        None,
+                        f"Категория с именем '{name}' и типом '{type.value}' уже существует.",
+                    )
                 else:
-                     return None, f"Ошибка базы данных: {e}"
+                    return None, f"Ошибка базы данных: {e}"
             except Exception as e:
                 session.rollback()
                 print(f"Error adding category '{name}' for user {user_id}: {e}")
@@ -906,5 +928,6 @@ class DatabaseManager:
 
 # --- Instance Creation ---
 # Create a single instance of the DatabaseManager for the application to use
-db_manager = DatabaseManager()
+db_manager = DatabaseManager(sqlite=True)
 print("DatabaseManager instance created and initialized.")
+db_manager._create_tables()
