@@ -2,13 +2,13 @@ import os
 import datetime
 import secrets
 import sqlite3
+import bcrypt
 from enum import Enum
 from typing import Any, Iterable
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, select, or_, func, update, delete, and_
 from sqlalchemy.sql import functions
 from sqlalchemy.orm import sessionmaker, Session as SQLAlchemySession, joinedload
-from werkzeug.security import generate_password_hash, check_password_hash
 
 from models.base import Base
 from models.user import User, UserRole
@@ -197,7 +197,12 @@ class DatabaseManager:
 
     def add_user(self, username: str, email: str, password: str):
         try:
-            hpw = generate_password_hash(password)
+            # Хешируем пароль с помощью bcrypt
+            password_bytes = password.encode("utf-8")
+            salt = bcrypt.gensalt()
+            hashed_password = bcrypt.hashpw(password_bytes, salt)
+            # Сохраняем хеш как строку в БД (декодируем из байтов)
+            hpw = hashed_password.decode("utf-8")
             self._exec(
                 "INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?);",
                 (username, email, hpw),
@@ -214,13 +219,17 @@ class DatabaseManager:
             (identifier, identifier),
             fetch="one",
         )
-        if row and check_password_hash(row["password_hash"], password):
-            return {
-                "user_id": row["user_id"],
-                "username": row["username"],
-                "email": row["email"],
-                "role": row["role"],
-            }
+        if row:
+            stored_hash_bytes = row["password_hash"].encode("utf-8")
+            password_bytes = password.encode("utf-8")
+            # Проверяем пароль с помощью bcrypt
+            if bcrypt.checkpw(password_bytes, stored_hash_bytes):
+                return {
+                    "user_id": row["user_id"],
+                    "username": row["username"],
+                    "email": row["email"],
+                    "role": row["role"],
+                }
         return None
 
     # ---------------------------- SESSIONS -----------------------------------

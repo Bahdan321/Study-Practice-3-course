@@ -1,7 +1,5 @@
 flet
 bcrypt
-werkzeug
 sqlalchemy
 greenlet
-asyncpg
 python-dotenv
