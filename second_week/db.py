@@ -220,16 +220,21 @@ class DatabaseManager:
             fetch="one",
         )
         if row:
-            stored_hash_bytes = row["password_hash"].encode("utf-8")
-            password_bytes = password.encode("utf-8")
-            # Проверяем пароль с помощью bcrypt
-            if bcrypt.checkpw(password_bytes, stored_hash_bytes):
-                return {
-                    "user_id": row["user_id"],
-                    "username": row["username"],
-                    "email": row["email"],
-                    "role": row["role"],
-                }
+            try:
+                stored_hash_bytes = row["password_hash"].encode("utf-8")
+                password_bytes = password.encode("utf-8")
+                # Проверяем пароль с помощью bcrypt
+                if bcrypt.checkpw(password_bytes, stored_hash_bytes):
+                    return {
+                        "user_id": row["user_id"],
+                        "username": row["username"],
+                        "email": row["email"],
+                        "role": row["role"],
+                    }
+            except ValueError:
+                # Если хеш невалидный (например, старый формат или поврежденные данные)
+                print(f"Invalid hash format for user: {identifier}")
+                return None
         return None
 
     # ---------------------------- SESSIONS -----------------------------------

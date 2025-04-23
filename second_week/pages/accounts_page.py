@@ -1,7 +1,8 @@
 import flet as ft
 from db import db_manager
 from icons import get_icon_by_name
-import functools # Import functools for partial
+import functools
+
 
 def AccountsView(page: ft.Page):
     """
@@ -18,7 +19,7 @@ def AccountsView(page: ft.Page):
     def go_to_edit_account(account_id: int, e: ft.ControlEvent):
         """Navigates to the edit page for the specific account."""
         print(f"Navigating to edit account ID: {account_id}")
-        page.go(f"/accounts/edit/{account_id}") # Use f-string for dynamic route
+        page.go(f"/accounts/edit/{account_id}")  # Use f-string for dynamic route
 
     def load_accounts():
         """Fetches accounts from DB and updates the ListView."""
@@ -30,19 +31,19 @@ def AccountsView(page: ft.Page):
                 ft.Container(
                     ft.Text("У вас пока нет счетов."),
                     alignment=ft.alignment.center,
-                    padding=20
+                    padding=20,
                 )
             )
         else:
             for acc in user_accounts:
-                edit_handler = functools.partial(go_to_edit_account, acc['account_id'])
+                edit_handler = functools.partial(go_to_edit_account, acc["account_id"])
                 accounts_list_view.controls.append(
                     ft.ListTile(
                         leading=ft.Icon(get_icon_by_name(acc["icon"])),
                         # Wrap the title Text in a Container with expand=True
                         title=ft.Container(
                             content=ft.Text(acc["name"]),
-                            expand=True # Allow the title to use available horizontal space
+                            expand=True,  # Allow the title to use available horizontal space
                         ),
                         subtitle=ft.Text(
                             f"{acc['description'] if acc['description'] else ''}"
@@ -55,16 +56,16 @@ def AccountsView(page: ft.Page):
                                 ft.IconButton(
                                     icon=ft.icons.EDIT_OUTLINED,
                                     tooltip="Редактировать",
-                                    on_click=edit_handler
-                                )
+                                    on_click=edit_handler,
+                                ),
                             ],
                             spacing=10,
-                            alignment=ft.MainAxisAlignment.END
-                        )
+                            alignment=ft.MainAxisAlignment.END,
+                        ),
                     )
                 )
         if page.controls:
-             page.update()
+            page.update()
 
     def go_to_add_account(e):
         page.go("/accounts/add")
@@ -90,9 +91,9 @@ def AccountsView(page: ft.Page):
             ft.Column(
                 [
                     ft.Container(
-                         content=accounts_list_view,
-                         expand=True,
-                         alignment=ft.alignment.center,
+                        content=accounts_list_view,
+                        expand=True,
+                        alignment=ft.alignment.center,
                     ),
                     ft.Container(
                         content=ft.ElevatedButton(
@@ -100,15 +101,15 @@ def AccountsView(page: ft.Page):
                             icon=ft.icons.ADD_CARD_OUTLINED,
                             on_click=go_to_add_account,
                             height=50,
-                            width=250
+                            width=250,
                         ),
                         padding=ft.padding.only(top=10, bottom=20),
-                        alignment=ft.alignment.center
-                    )
+                        alignment=ft.alignment.center,
+                    ),
                 ],
                 horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                expand=True
-            )
+                expand=True,
+            ),
         ],
         vertical_alignment=ft.MainAxisAlignment.START,
         horizontal_alignment=ft.CrossAxisAlignment.CENTER,
